@@ -1,7 +1,6 @@
 Mostly this is a backup of code written on the mac.
 
-Positron data collection and analysis routine:
-
+POSITRON EXPERIMENT DATA COLLECTION ROUTINE:
 pi3:
 Use crontab:
 on minute 0 and minute 30 : Collect wheel position data. these are W_IDX files
@@ -16,7 +15,9 @@ pi3: ~/data/<date>/(list of W_IDX files)
 pi4: ~/data/<date>/(list of G_SPEC files)
 
 copy all data to MAC/DATA/<date>
+the python code saved here is used to analyze the data.
 
-use python code here to analyze the data.
+POSITRON EXPERIMENT DATA ANALYSIS ROUTINE:
+the python files need to be in the directory ~/data/ with all sub-directories dates, and each sub-directory containing the raw W_IDX and GSPEC_ files
 
-General analysis routine
+
