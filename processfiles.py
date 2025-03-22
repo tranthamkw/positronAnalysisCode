@@ -14,10 +14,16 @@ mHistogram=[[0 for x in range(max_bins)] for y in range(max_idx)]
 # mHistogram[idx][bin]
 
 def areSame(pre1,text1,pre2,text2):
-	text1=re.sub("^"+pre1,"",text1)
-	text1=text1[:-6]
-	text2=re.sub("^"+pre2,"",text2)
-	text2=text2[:-6]
+
+	result=re.search(pre1,text1)
+#	text1=re.sub("^"+pre1,"",text1)
+	i=result.start()
+	text1=text1[i+5:-6]
+
+	result=re.search(pre2,text2)
+#	text2=re.sub("^"+pre2,"",text2)
+	i=result.start()
+	text2=text2[i+5:-6]
 	if re.match(text1,text2):
 		return True
 	else:
@@ -55,19 +61,22 @@ with open(newfilename, mode='r') as f:
 		line=f.readline()
 
 listgood=(len(myfiles)==len(idx))
+print(listgood)
 
 if (listgood):  ##these must match.
 	newfilename=os.path.join(pathname,"processLog.csv") 
 	with open(newfilename,mode='w') as f:
 		f.write("GSPEC file, W_IDX file,rawIndex,interpretedIndex,sampleID\n")
 		for i in range(len(idx)):
-			fnames[i]=re.sub("/home/pi/data/"+pathname,"",fnames[i]) ## list generated using os.listdir 
+			fnames[i]=re.sub("/home/pi/data/","",fnames[i]) ## list generated using os.listdir 
+#			fnames[i]=re.sub(pathname,"",fnames[i]) ## list generated using os.listdir 
 			myfiles[i]=re.sub(pathname,"",myfiles[i]) ## list generated using glob
 			listgood=listgood and areSame("GSPEC",myfiles[i],"W_IDX",fnames[i])
 			print("{}\t{}\t{}\t{}\t{}".format(myfiles[i],fnames[i],2*(idx[i])+1,idx[i],sample[idx[i]]))
 			f.write("{},{},{},{},{}\n".format(myfiles[i],fnames[i],2*(idx[i])+1,idx[i],sample[idx[i]]))
 
 print("list good={}".format(listgood))
+
 
 if listgood:
 	## open len(myfiles)
