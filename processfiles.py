@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import glob
+import argparse
 
 sample=["D-Glucose II","L-Glucose II","Empty I","D-Glucose III","D-Glucose I","L-Glucose I","L-Glucose III","Empty II"]
 
@@ -14,12 +15,10 @@ mHistogram=[[0 for x in range(max_bins)] for y in range(max_idx)]
 # mHistogram[idx][bin]
 
 def areSame(pre1,text1,pre2,text2):
-
 	result=re.search(pre1,text1)
 #	text1=re.sub("^"+pre1,"",text1)
 	i=result.start()
 	text1=text1[i+5:-6]
-
 	result=re.search(pre2,text2)
 #	text2=re.sub("^"+pre2,"",text2)
 	i=result.start()
@@ -30,7 +29,22 @@ def areSame(pre1,text1,pre2,text2):
 		return False
 
 
-pathname=sys.argv[1]
+parser = argparse.ArgumentParser(
+	prog='processRegionSum',
+	description='Sums over channels in regions specified by list regions',
+	epilog="e.g. python processRegionSums.py <directory>")
+parser.add_argument('directory',type=str,help='directory')
+
+
+args = parser.parse_args()
+pathname=args.directory
+
+# if a slash was passed, remove it.  add one at the end. this
+# essentially adds a slash if we forget to add it.
+
+pathname=re.sub("/","",pathname)
+pathname+="/"
+
 
 try:
 	myfiles = glob.glob(pathname+"GSPEC*.csv")

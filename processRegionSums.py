@@ -1,7 +1,8 @@
 import os
 import sys
 import re
-
+import glob
+import argparse
 
 from sumRegions import(sumH)
 
@@ -15,11 +16,26 @@ region[0] = sum from channels 15 to 299
 region[1] = sum from channels 300 to 699
 """
 
+parser = argparse.ArgumentParser(
+        prog='processRegionSum',
+        description='Sums over channels in regions specified by list regions',
+        epilog="e.g. python processRegionSums.py <directory>")
+parser.add_argument('directory',type=str,help='directory')
 
-pathname=sys.argv[1]
+
+args = parser.parse_args()
+pathname=args.directory
+
+# if a slash was passed, remove it.  add one at the end. this
+# essentially adds a slash if we forget to add it.
+
+pathname=re.sub("/","",pathname)
+pathname+="/"
 
 try:
-	myfiles = os.listdir(pathname)
+	myfiles = glob.glob(pathname+"GSPEC*.csv")
+# returns a list that looks like '3-17-25/GSPEC2025-03-17_200001.csv'
+#	myfiles = os.listdir(pathname)
 except Exception as e:
 	print("path {} raises exception {}".format(pathname,e))
 	os._exit(-1)
@@ -27,7 +43,12 @@ except Exception as e:
 pattern = "^GSPEC"
 newfilename=""
 print(len(myfiles))
+
+for i in range(len(myfiles)):
+	myfiles[i]=re.sub(pathname,"",myfiles[i])
+
 myfiles.sort()
+
 outfilename=os.path.join(pathname,"regionSums.csv")
 
 with open(outfilename,mode='w') as f:
@@ -42,12 +63,11 @@ with open(outfilename,mode='w') as f:
 		f.write("ch {} to {},".format(regions[i],regions[i+1]))
 	f.write("\n")
 	for i in range(len(myfiles)):
-		if re.match(pattern,myfiles[i]):
+		if re.match(pattern,myfiles[i]): #if match pattern prolly not needed with glob statement
 			newfilename=os.path.join(pathname,myfiles[i])
 			tmpstr=sumH(newfilename,regions)
 			f.write(tmpstr)
 			tmpstr=re.sub(r"\n","",tmpstr)
 			print(tmpstr)
-
 
 os._exit(0)

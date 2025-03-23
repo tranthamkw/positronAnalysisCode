@@ -82,8 +82,10 @@ for i in range(len(myfiles)):  #open each file and channel by channel sum histog
 			temp=linelist[0]
 			regions=[0 for y in range(numregions)]
 			infilename.append(linelist[0])
-			substr1=temp[27:29]
-			substr2=temp[29:31]
+			result = re.search("_",temp)
+			j=result.start()
+			substr1=temp[j+1:j+3]
+			substr2=temp[j+3:j+5]
 			timeidx.append(i*24.0+float(substr1)+float(substr2)/60.0)
 #			print("timeidx {}".format(i*24.0+float(substr1)+float(substr2)/60.0))
 			temperature.append(linelist[1])
