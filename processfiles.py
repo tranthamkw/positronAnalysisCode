@@ -105,7 +105,10 @@ if listgood:
 				print("Invalid histogram file")
 				exit(0)
 			line = f.readline() #livetime
-			livetime[idx[k]]+=(int(line.split(",")[1])+1) #add 1 because this is zero based
+			lt=(int(line.split(",")[1])+1) #add 1 because this is zero based
+			livetime[idx[k]]+=lt
+			if lt != 1680:
+				print(in_filename+" has live time of {}".format(lt))
 			line = f.readline()
 			while not(re.search('data',line) and line):
 				line = f.readline()

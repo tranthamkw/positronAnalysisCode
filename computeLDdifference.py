@@ -3,6 +3,10 @@ import sys
 import re
 import glob
 from os.path import exists
+
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+
 """
 Opens "masterSum.csv" in the directory of command line.
 
@@ -12,7 +16,6 @@ computes average <D>
 
 computes average <L>
 "Usage:  python computeLDdiffernce <path-to-masterSum.csv> [y] chlo chhi
-
  y=scaling from chlo to chhi, empty or anything else, not scaled")
 
 """
@@ -39,6 +42,9 @@ EHistogram=[0.0 for x in range(max_bins)]
 DHistogram=[0.0 for x in range(max_bins)]
 LHistogram=[0.0 for x in range(max_bins)]
 
+Eavg=[0.0 for x in range(max_bins)]
+Davg=[0.0 for x in range(max_bins)]
+Lavg=[0.0 for x in range(max_bins)]
 
 # reference histogram array data by
 # mHistogram[idx][bin]
@@ -113,20 +119,40 @@ def scaleAndAverage():
 		for i in range(len(emptylist)):
 			EHistogram[ch]+=scaleFactor[emptylist[i]]*float(sHistogram[emptylist[i]][ch])
 		EHistogram[ch]=EHistogram[ch]/float(len(emptylist))
-"""
-def smoothHistograms(pts):
-	global sHistogram
+
+def smoothHistograms(pts,livetime):
 	global EHistogram
 	global LHistogram
 	global DHistogram
+	global Eavg
+	global Davg
+	global Lavg
 	global max_bins
 
-	temphistogram=[0.0 for x in range(max_bins)]
+	time=float(livetime)/3600.0
 	for ch in range(pts,max_bins-pts-2):
+		temp=0.0
 		for i in range(1,pts+1):
-			temphistogram[ch]+=(EHistogram[ch-i]+EHistogram[ch+i])
-		temphistogram[ch]=temphistogram[ch]/float(pts
-"""
+			temp+=(EHistogram[ch-i]+EHistogram[ch+i])
+		temp+=EHistogram[ch]
+		Eavg[ch]=temp/float(2*pts+1)
+		Eavg[ch]=Eavg[ch]/time
+	for ch in range(pts,max_bins-pts-2):
+		temp=0.0
+		for i in range(1,pts+1):
+			temp+=(DHistogram[ch-i]+DHistogram[ch+i])
+		temp+=DHistogram[ch]
+		Davg[ch]=temp/float(2*pts+1)
+		Davg[ch]=Davg[ch]/time
+	for ch in range(pts,max_bins-pts-2):
+		temp=0.0
+		for i in range(1,pts+1):
+			temp+=(LHistogram[ch-i]+LHistogram[ch+i])
+		temp+=LHistogram[ch]
+		Lavg[ch]=temp/float(2*pts+1)
+		Lavg[ch]=Lavg[ch]/time
+
+
 
 ################### START MAIN
 
@@ -191,6 +217,12 @@ with (open(filename,mode='r')) as f:
 		os._exit(-1)
 
 #TODO check that all livetimes are the same
+	same=True
+	for k in range(1,len(livetime)):
+		same=(livetime[k]==livetime[0])
+	if not same:
+		print("\nWARNING: LIVE-TIMES ARE NOT THE SAME")
+		print(livetime)
 
 	line = f.readline() # line 5 is a simple header. ignore
 	ch=0
@@ -222,8 +254,12 @@ for i in range(max_idx):
 
 scaleAndAverage()
 
+# COMPUTE SMOOTHED AVERAGE
+
+smoothHistograms(10,livetime[0])  #use the first live time to norm smoothed average
 
 # save master sum
+chan=[0 for x in range(max_bins)]
 
 final_filename=pathname+"/EDL_Histogram"+re.sub("/","",sys.argv[1])+".csv"
 print("summed to {}".format(final_filename))
@@ -236,11 +272,77 @@ with open(final_filename,mode='w') as f:
 	f.write("Scale factors by sample location\n")
 	for i in range(max_idx):
 		f.write("{},{},{}\n".format(i,sample[i],scaleFactor[i]))
-	f.write("Ch,E,D,L\n")
+	f.write("Ch,E,D,L,<E>,<D>,<L>,<D>-<E>,<L>-<E>,<D>-<L>\n")
 	for j in range(max_bins):
-		f.write("{},{},{},{}\n".format(j,EHistogram[j],DHistogram[j],LHistogram[j]))
+		chan[j]=j
+		f.write("{},{},{},{},{},{},{},{},{},{}\n".format\
+		(j,EHistogram[j],DHistogram[j],LHistogram[j],\
+		Eavg[j],Davg[j],Lavg[j],\
+		Davg[j]-Eavg[j],Lavg[j]-Eavg[j],Davg[j]-Lavg[j]))
 
-#newfilename=os.path.join(pathname,"wheel_IDX_list.csv")
 
-print("\nDone")
+
+fig=plt.figure()
+# Set global font sizes using rcParams
+plt.rcParams.update({
+    'font.size': 12,           # General text size
+    'xtick.labelsize': 10,      # X-axis tick labels
+    'ytick.labelsize': 10,      # Y-axis tick labels
+    'axes.labelsize': 12,       # X and Y labels
+    'axes.titlesize': 12,       # Title size
+    'legend.fontsize': 10,       # Legend font size
+    'figure.figsize': (10,7),   # Figure size
+    'errorbar.capsize': 3,      # Errorbar capsize
+    'lines.markersize': 6,        # Marker size
+})
+
+mycolors=['#DA7842','DarkOrchid','#156082','#00B050','Black']
+
+fig.set_size_inches(7, 5)
+
+plt.plot(chan,Eavg,c=mycolors[4],linewidth=0.8)
+plt.xlabel("MCA Channel")
+plt.ylabel("Counts/channel/hour")
+plt.title("'Empty' = <E> spectra")
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(1000))
+plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(200))
+plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
+fig.savefig(os.path.join(pathname,"EmptySpectra"+re.sub("/","",sys.argv[1])+".png"),dpi=300)
+
+
+plt.clf()
+
+temp=[0 for x in range(max_bins)]
+for i in range(max_bins):
+	temp[i]=Davg[i]-Eavg[i]
+plt.plot(chan,temp,c=mycolors[2],linewidth=1)
+temp=[0 for x in range(max_bins)]
+for i in range(max_bins):
+	temp[i]=Lavg[i]-Eavg[i]
+plt.plot(chan,temp,c=mycolors[0],linewidth=1)
+plt.xlabel("MCA Channel")
+plt.ylabel("Counts/channel/hour")
+plt.title("Empty Corrected D- and L- spectra")
+plt.legend(['<D>-<E>','<L>-<E>'], loc='upper right')
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(1000))
+plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(200))
+plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
+fig.savefig(os.path.join(pathname,"ECorrectedSpectra"+re.sub("/","",sys.argv[1])+".png"),dpi=300)
+
+plt.clf()
+
+temp=[0 for x in range(max_bins)]
+for i in range(max_bins):
+	temp[i]=Davg[i]-Lavg[i]
+plt.plot(chan,temp,c=mycolors[3],linewidth=1)
+plt.xlabel("MCA Channel")
+plt.ylabel("Counts/channel/hour")
+plt.title("Enantiomer difference")
+plt.legend(['<D>-<L>'], loc='upper right')
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(1000))
+plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(200))
+plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
+fig.savefig(os.path.join(pathname,"D-L_Spectra"+re.sub("/","",sys.argv[1])+".png"),dpi=300)
+
+print("Done")
 os._exit(0)

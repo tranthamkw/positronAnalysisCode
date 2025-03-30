@@ -3,13 +3,13 @@ import sys
 import re
 import glob
 from os.path import exists
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+
 
 sample=["D-Glucose II","L-Glucose II","Empty I","D-Glucose III","D-Glucose I","L-Glucose I","L-Glucose III","Empty II"]
 
 myfiles=[]
-#filelist=[]
-
-
 
 """
 program opens "regionSums.csv" in every directory passed in the commandline
@@ -58,7 +58,7 @@ for i in range(len(pathlist)):
 		print("{}  not found".format(filename))
 		os._exit(-1)
 
-
+myday=0
 regions=[]
 
 for i in range(len(myfiles)):  #open each file and channel by channel sum histograms
@@ -86,8 +86,14 @@ for i in range(len(myfiles)):  #open each file and channel by channel sum histog
 			j=result.start()
 			substr1=temp[j+1:j+3]
 			substr2=temp[j+3:j+5]
-			timeidx.append(i*24.0+float(substr1)+float(substr2)/60.0)
-#			print("timeidx {}".format(i*24.0+float(substr1)+float(substr2)/60.0))
+			substr3=temp[j-2:j]
+			if i==0:
+				myday=float(substr3)
+				day=0
+			else:
+				day=float(substr3)-myday
+
+			timeidx.append(day*24.0+float(substr1)+float(substr2)/60.0)
 			temperature.append(linelist[1])
 			livetime.append(linelist[2])
 			for k in range(numregions):
@@ -102,16 +108,6 @@ for i in range(len(myfiles)):  #open each file and channel by channel sum histog
 
 # save master region
 
-"""
-for x in mylist:
-	for y in x:
-		print(y,end=" ")
-	print()
-
-exit(0)
-"""
-
-#print("All good {}".format(allgood))
 final_filename=pathname+"/masterRegionalSum"+pathname+".csv"
 
 print("Aggregate to {}".format(final_filename))
@@ -128,5 +124,55 @@ with open(final_filename,mode='w') as f:
 		f.write("\n")
 
 
-print("\nDone")
+
+fig=plt.figure()
+# Set global font sizes using rcParams
+plt.rcParams.update({
+    'font.size': 12,           # General text size
+    'xtick.labelsize': 10,      # X-axis tick labels
+    'ytick.labelsize': 10,      # Y-axis tick labels
+    'axes.labelsize': 12,       # X and Y labels
+    'axes.titlesize': 12,       # Title size
+    'legend.fontsize': 10,       # Legend font size
+    'figure.figsize': (10,7),   # Figure size
+    'errorbar.capsize': 3,      # Errorbar capsize
+    'lines.markersize': 6,        # Marker size
+})
+
+fig.set_size_inches(7, 5)
+
+plt.plot(timeidx,temperature,marker='o',ms=3,mec = 'DarkRed', mfc = 'DarkRed',ls='')
+plt.xlabel("Hour")
+plt.ylabel("Temperature (C)")
+plt.title("Temperature (C)")
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(12))
+plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(4))
+plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
+fig.savefig(os.path.join(pathname,"graphTemperature.png"))
+
+mycolors=['DarkOrange','DarkOrchid','DarkSlateBlue','ForestGreen']
+
+
+plt.clf()
+
+for k in range(numregions):
+	tmparray=[0 for x in range(len(timeidx))]
+	for i in range(len(timeidx)):
+		tmparray[i]=mylist[i][k]
+	plt.plot(timeidx,tmparray,marker='o',ms=3,mec = mycolors[k%4], mfc = mycolors[k%4],ls='')
+
+mylegend=[]
+plt.xlabel("Hour")
+plt.ylabel("Total counts/livetime")
+plt.title("Regional Sums")
+for k in range(numregions):
+	mylegend.append("Region {}".format(k))
+
+plt.legend(mylegend, loc='lower right')
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(12))
+plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(4))
+plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
+fig.savefig(os.path.join(pathname,"graphRegions.png"),dpi=300)
+
+print("Done")
 os._exit(0)

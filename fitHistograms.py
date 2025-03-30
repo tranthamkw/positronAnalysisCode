@@ -5,7 +5,8 @@ import glob
 import argparse
 import numpy as np 
 from scipy.optimize import curve_fit 
-
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 #sample=["D-Glucose II","L-Glucose II","Empty I","D-Glucose III","D-Glucose I","L-Glucose I","L-Glucose III","Empty II"]
 
@@ -122,7 +123,14 @@ for u in range(len(pathlist)):
 				i=result.start()
 				substr1=in_filename[i+1:i+3]
 				substr2=in_filename[i+3:i+5]
-				timeidx.append(float(u)*24.0+float(substr1)+float(substr2)/60.0)
+				substr3=in_filename[i-2:i]
+				if u==0:
+					myday=float(substr3)
+					day=0
+				else:
+					day=float(substr3)-myday
+
+				timeidx.append(day*24.0+float(substr1)+float(substr2)/60.0)
 
 			xdata=ch[startch:endch]
 			ydata=histogram[startch:endch]
@@ -168,7 +176,6 @@ for u in range(len(pathlist)):
 newfilename=os.path.join(pathname,"gaussianFits{}_{}.csv".format(startch,endch))
 print("Output to: "+newfilename)
 
-
 with open(newfilename,mode='w') as f:
 	f.write("Fit to  y= a*EXP(-1.0*(x-x0)^2/(2*s^2))+ b + c/(1 + EXP((x-x0)/d))\n")
 	f.write("inFile,hour,T,a,(a),x0,(x0),s,(s),b,(b),c,(c),d,(d)\n")
@@ -183,5 +190,58 @@ with open(newfilename,mode='w') as f:
 			,c[i],dc[i]\
 			,d[i],dd[i]))
 
+#
+fig=plt.figure()
+# Set global font sizes using rcParams
+plt.rcParams.update({
+    'font.size': 12,           # General text size
+    'xtick.labelsize': 10,      # X-axis tick labels
+    'ytick.labelsize': 10,      # Y-axis tick labels
+    'axes.labelsize': 12,       # X and Y labels
+    'axes.titlesize': 12,       # Title size
+    'legend.fontsize': 10,       # Legend font size
+    'figure.figsize': (10,7),   # Figure size
+    'errorbar.capsize': 3,      # Errorbar capsize
+    'lines.markersize': 6,        # Marker size
+})
+
+fig.set_size_inches(7, 5)
+
+plt.errorbar(timeidx,x0,dx0,marker='o',ms=5,mec = 'Black', mfc = 'Blue',ls='',ecolor='Black',elinewidth=1)
+plt.xlabel("Hour")
+plt.ylabel("MCA Channel")
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(12))
+plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(2))
+#plt.tick_params(axis='x', which='minor', bottom=False)
+plt.title(r'Gaussian center fit $X_0$ {} to {}'.format(startch,endch))
+plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
+fig.savefig(os.path.join(pathname,'graphX0_{}_{}.png'.format(startch,endch)),dpi=300)
+
+plt.clf()
+plt.errorbar(timeidx,a,da,marker='o',ms=5,mec = 'Red', mfc = 'Orange',ls='',ecolor='Black',elinewidth=1)
+plt.xlabel("Hour")
+plt.ylabel("Counts/livetime")
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(12))
+plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(2))
+#plt.tick_params(axis='x', which='minor', bottom=False)
+plt.title(r'Gaussian amplitude a {} to {}'.format(startch,endch))
+plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
+fig.savefig(os.path.join(pathname,'graph_a_{}_{}.png'.format(startch,endch)),dpi=300)
+
+plt.clf()
+plt.errorbar(timeidx,s,ds,marker='o',ms=5,mec = 'Blue', mfc = 'DarkTurquoise',ls='',ecolor='Black',elinewidth=1)
+plt.xlabel("Hour")
+plt.ylabel(r'$\sigma$ (MCA Channels)')
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(12))
+plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(2))
+#plt.tick_params(axis='x', which='minor', bottom=False)
+plt.title(r'Gaussian stddev $\sigma$ {} to {}'.format(startch,endch))
+plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
+fig.savefig(os.path.join(pathname,'graph_s_{}_{}.png'.format(startch,endch)),dpi=300)
+
+
 print("\nDone")
+
+
+
 os._exit(0)
