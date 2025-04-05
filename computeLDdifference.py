@@ -3,9 +3,65 @@ import sys
 import re
 import glob
 from os.path import exists
-
+import argparse
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import numpy as np 
+from scipy.optimize import curve_fit 
+
+"""
+fits gaussian + logistic to peaks in provided ranges
+
+"""
+
+
+def gaussian(x,a,x0,s,b,c,d):
+        y= a*np.exp(-1.0*(x-x0)**2/(2*s**2))+ b + c/(1 + np.exp((x-x0)/d))
+        return y
+
+
+def fitmycurve(xin,yin,startch,endch):
+	mybounds=[(1, 10, 10, 0, 1, 1), (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf)]
+	xdata=xin[startch:endch]
+	ydata=yin[startch:endch]
+#       guess for a, x0, s, b, c, d
+	guess=[ydata[int(len(ydata)/2)]\
+	,startch+(endch-startch)/2\
+	,(endch-startch)/3\
+	,ydata[0]+ydata[len(ydata)-1]\
+	,ydata[len(ydata)-1]\
+	,(endch-startch)/2]
+	try:
+		popt,copt = curve_fit(gaussian,xdata,ydata,guess,bounds=mybounds)
+		a=popt[0]
+		x0=popt[1]
+		s=popt[2]
+		b=popt[3]
+		c=popt[4]
+		d=popt[5]
+		da=(copt[0][0]**0.5)
+		dx0=(copt[1][1]**0.5)
+		ds=(copt[2][2]**0.5)
+		db=(copt[3][3]**0.5)
+		dc=(copt[4][4]**0.5)
+		dd=(copt[5][5]**0.5)
+	except:
+		print("error fitting")
+		print("Guess {}".format(guess))
+		a=(0)
+		x0=(0)
+		s=(0)
+		b=(0)
+		c=(0)
+		d=(0)
+		da=(0)
+		dx0=(0)
+		ds=(0)
+		db=(0)
+		dc=(0)
+		dd=(0)
+
+	return a,da,x0,dx0,s,ds,b,db,c,dc,d,dd
 
 """
 Opens "masterSum.csv" in the directory of command line.
@@ -15,9 +71,7 @@ computes average <E>
 computes average <D>
 
 computes average <L>
-"Usage:  python computeLDdiffernce <path-to-masterSum.csv> [y] chlo chhi
- y=scaling from chlo to chhi, empty or anything else, not scaled")
-
+"Usage:  python computeLDdiffernce <path-to-masterSum.csv> <Ch511keV> <Ch1275keV?
 """
 
 sample=["D-Glucose II","L-Glucose II","Empty I","D-Glucose III","D-Glucose I","L-Glucose I","L-Glucose III","Empty II"]
@@ -163,31 +217,38 @@ chhi = max_bins
 scale = False
 allgood=True
 
+
+
+parser = argparse.ArgumentParser(
+        prog='computeLDdifference',
+        description='Fits Gaussian',
+        epilog="e.g. python computeLDdifference <path-to-master-sum> <EnergyCh511keV> <EnergyCh1275keV>")
+parser.add_argument('pathname',type=str,help='path to master sum')
+parser.add_argument('ch511', type=float, help='Channel for 511keV')
+parser.add_argument('ch1275', type=float, help='Channel for 1275keV')
+
+args = parser.parse_args()
+pathname=args.pathname
+ch511 = args.ch511
+ch1275 = args.ch1275
+
+
 argc=len(sys.argv)
 
-pathname=re.sub("/","",sys.argv[1])
+pathname=re.sub("/","",pathname)
 
-if argc==2:
-	filename = pathname+"/masterSum.csv"
-	if not exists(filename):
-		print("{}  not found".format(filename))
-		os._exit(-1)
-elif (argc==5) and (re.search("y",sys.argv[2])):
-	filename = pathname+"/masterSum.csv"
-	if not exists(filename):
-		print("{}  not found".format(filename))
-		os._exit(-1)
-	scale = True
-	chlo = int(sys.argv[3])
-	chhi = int(sys.argv[4])
-else:
-	print("Usage:  python computeLDdiffernce <path-to-masterSum.csv> [y] chlo chhi \n y=scaling from chlo to chhi, empty or anything else, not scaled")
+filename = pathname+"/masterSum.csv"
+if not exists(filename):
+	print("{}  not found".format(filename))
 	os._exit(-1)
-#TODO put in error traping for lo and hi
 
+if (ch511>ch1275):
+	print("Channel 511 > channel 1275")
+	os._exit(-1)
+
+cal_m = (1275.0-511.0)/(ch1275-ch511)
+cal_b = 1275.0 - cal_m * ch1275
 print(filename)
-print(scale)
-print("lo {}\thi {}".format(chlo,chhi))
 
 
 #open the file 
@@ -242,15 +303,15 @@ with (open(filename,mode='r')) as f:
 # compute averages and stuff
 
 # compute sum counts for scaling
-if scale:
-	calculateScaleFactor(chlo,chhi)
-else:
-	for i in range(max_idx):
-		scaleFactor[i]=1.0
-
-print("Scale factors by sample location")
+#if scale:
+#	calculateScaleFactor(chlo,chhi)
+#else:
 for i in range(max_idx):
-	print("{}\t{}\t{}".format(i,sample[i],scaleFactor[i]))
+	scaleFactor[i]=1.0
+
+#print("Scale factors by sample location")
+#for i in range(max_idx):
+#	print("{}\t{}\t{}".format(i,sample[i],scaleFactor[i]))
 
 scaleAndAverage()
 
@@ -258,8 +319,21 @@ scaleAndAverage()
 
 smoothHistograms(10,livetime[0])  #use the first live time to norm smoothed average
 
+
+# fits
+xin=[j for j in range(max_bins)]
+fitsE1=fitmycurve(xin,Eavg,2400,3700)
+fitsD1=fitmycurve(xin,Davg,2400,3700)
+fitsL1=fitmycurve(xin,Lavg,2400,3700)
+
+fitsE2=fitmycurve(xin,Eavg,6300,8000)
+fitsD2=fitmycurve(xin,Davg,6300,8000)
+fitsL2=fitmycurve(xin,Lavg,6300,8000)
+
+
+
 # save master sum
-chan=[0 for x in range(max_bins)]
+energy=[0.0 for x in range(max_bins)]
 
 final_filename=pathname+"/EDL_Histogram"+re.sub("/","",sys.argv[1])+".csv"
 print("summed to {}".format(final_filename))
@@ -267,20 +341,25 @@ with open(final_filename,mode='w') as f:
 	f.write(headerline)
 	f.write("\n")
 	f.write("LiveTime,{}\n".format(livetime[1]))
-	f.write("Channel range for scaling,{},{}\n".format(chlo,chhi))
+	f.write("Energy calibration: Ch511 Ch1275=,{},{}\n".format(ch511,ch1275))
 	f.write("Scaling enabled,{}\n".format(scale))
-	f.write("Scale factors by sample location\n")
-	for i in range(max_idx):
-		f.write("{},{},{}\n".format(i,sample[i],scaleFactor[i]))
-	f.write("Ch,E,D,L,<E>,<D>,<L>,<D>-<E>,<L>-<E>,<D>-<L>\n")
+	f.write("Scale factors by sample location NOT DONE\n")
+#	for i in range(max_idx):
+#		f.write("{},{},{}\n".format(i,sample[i],scaleFactor[i]))
+	mytext=['a','da','x0','dx0','s','ds','b','db','c','dc','d','dd']
+	f.write("parameter,fit511_E,fit511_D,fit511_L,,fit1275_E,fit1275_D,fit1275_L\n")
+
+	for j in range(len(mytext)):
+		f.write("{},{},{},{},,{},{},{}\n".format(mytext[j],\
+		fitsE1[j],fitsD1[j],fitsL1[j],fitsE2[j],fitsD2[j],fitsL2[j]))
+
+	f.write("ch,E,D,L,<E>,<D>,<L>,<D>-<E>,<L>-<E>,<D>-<L>\n")
 	for j in range(max_bins):
-		chan[j]=j
+		energy[j]=float(j)*cal_m+cal_b
 		f.write("{},{},{},{},{},{},{},{},{},{}\n".format\
 		(j,EHistogram[j],DHistogram[j],LHistogram[j],\
 		Eavg[j],Davg[j],Lavg[j],\
 		Davg[j]-Eavg[j],Lavg[j]-Eavg[j],Davg[j]-Lavg[j]))
-
-
 
 fig=plt.figure()
 # Set global font sizes using rcParams
@@ -296,36 +375,42 @@ plt.rcParams.update({
     'lines.markersize': 6,        # Marker size
 })
 
-mycolors=['#DA7842','DarkOrchid','#156082','#00B050','Black']
+mycolors=['DarkOrange','DarkOrchid','DarkSlateBlue','#00B050','Black']
 
 fig.set_size_inches(7, 5)
 
-plt.plot(chan,Eavg,c=mycolors[4],linewidth=0.8)
-plt.xlabel("MCA Channel")
+
+plt.plot(energy,Eavg,c=mycolors[4],linewidth=1.1)
+plt.plot(energy,Davg,c=mycolors[2],linewidth=1.1)
+plt.plot(energy,Lavg,c=mycolors[0],linewidth=1,ls='--')
+plt.legend(['<E>','<D>','<L>'],loc='upper right')
+plt.xlabel("Energy (keV)")
 plt.ylabel("Counts/channel/hour")
-plt.title("'Empty' = <E> spectra")
-plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(1000))
-plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(200))
+plt.suptitle("Totaled & Averaged spectra")
+plt.title("Livetime={}s".format(livetime[1]))
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(200))
+plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(50))
 plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
-fig.savefig(os.path.join(pathname,"EmptySpectra"+re.sub("/","",sys.argv[1])+".png"),dpi=300)
-
-
+fig.savefig(os.path.join(pathname,"AllSpectra"+re.sub("/","",sys.argv[1])+".png"),dpi=300)
 plt.clf()
+
+
 
 temp=[0 for x in range(max_bins)]
 for i in range(max_bins):
 	temp[i]=Davg[i]-Eavg[i]
-plt.plot(chan,temp,c=mycolors[2],linewidth=1)
+plt.plot(energy,temp,c=mycolors[2],linewidth=1)
 temp=[0 for x in range(max_bins)]
 for i in range(max_bins):
 	temp[i]=Lavg[i]-Eavg[i]
-plt.plot(chan,temp,c=mycolors[0],linewidth=1)
-plt.xlabel("MCA Channel")
+plt.plot(energy,temp,c=mycolors[0],linewidth=1)
+plt.xlabel("Energy (keV)")
 plt.ylabel("Counts/channel/hour")
-plt.title("Empty Corrected D- and L- spectra")
+plt.suptitle("Empty Corrected D- and L- spectra")
+plt.title("Livetime={}s".format(livetime[1]))
 plt.legend(['<D>-<E>','<L>-<E>'], loc='upper right')
-plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(1000))
-plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(200))
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(200))
+plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(50))
 plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
 fig.savefig(os.path.join(pathname,"ECorrectedSpectra"+re.sub("/","",sys.argv[1])+".png"),dpi=300)
 
@@ -334,13 +419,14 @@ plt.clf()
 temp=[0 for x in range(max_bins)]
 for i in range(max_bins):
 	temp[i]=Davg[i]-Lavg[i]
-plt.plot(chan,temp,c=mycolors[3],linewidth=1)
-plt.xlabel("MCA Channel")
+plt.plot(energy,temp,c=mycolors[3],linewidth=1)
+plt.xlabel("Energy (keV)")
 plt.ylabel("Counts/channel/hour")
-plt.title("Enantiomer difference")
+plt.suptitle("Enantiomer difference")
+plt.title("Livetime={}s".format(livetime[1]))
 plt.legend(['<D>-<L>'], loc='upper right')
-plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(1000))
-plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(200))
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(200))
+plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(50))
 plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
 fig.savefig(os.path.join(pathname,"D-L_Spectra"+re.sub("/","",sys.argv[1])+".png"),dpi=300)
 

@@ -139,12 +139,16 @@ plt.rcParams.update({
     'lines.markersize': 6,        # Marker size
 })
 
-fig.set_size_inches(7, 5)
+#fig.set_size_inches(7, 5)
 
 plt.plot(timeidx,temperature,marker='o',ms=3,mec = 'DarkRed', mfc = 'DarkRed',ls='')
 plt.xlabel("Hour")
 plt.ylabel("Temperature (C)")
 plt.title("Temperature (C)")
+#plt.ylim(0, 30)
+bottom,top=plt.ylim()
+plt.ylim(-1,2)
+print("{}\t{}".format(bottom,top))
 plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(12))
 plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(4))
 plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
@@ -169,7 +173,7 @@ for k in range(numregions):
 	mylegend.append("Region {}".format(k))
 
 plt.legend(mylegend, loc='lower right')
-plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(12))
+plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(24))
 plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(4))
 plt.grid(color = 'DodgerBlue', linestyle = '--', linewidth = 0.5)
 fig.savefig(os.path.join(pathname,"graphRegions.png"),dpi=300)
