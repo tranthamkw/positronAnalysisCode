@@ -74,7 +74,7 @@ computes average <L>
 "Usage:  python computeLDdiffernce <path-to-masterSum.csv> <Ch511keV> <Ch1275keV?
 """
 
-sample=["D-Glucose II","L-Glucose II","Empty I","D-Glucose III","D-Glucose I","L-Glucose I","L-Glucose III","Empty II"]
+sample=["D- II","L- II","Empty I","D- III","D- I","L- I","L- III","Empty II"]
 # 0,1,2,3,4,5,6,7
 
 max_bins=8192

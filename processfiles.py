@@ -4,7 +4,7 @@ import re
 import glob
 import argparse
 
-sample=["D-Glucose II","L-Glucose II","Empty I","D-Glucose III","D-Glucose I","L-Glucose I","L-Glucose III","Empty II"]
+sample=["D- II","L- II","Empty I","D- III","D- I","L- I","L- III","Empty II"]
 
 max_bins=8192
 max_idx=8

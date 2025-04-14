@@ -8,7 +8,7 @@ from sumRegions import(sumH)
 
 """ this is the channel numbers which serve to divide the regions """
 
-regions=[350,2400,3600,6200,8000]
+regions=[1000,2400,3600,6200,8000]
 
 """ use as many as needed.  e.g. with regions=[15,300,600] the program
 will sum:

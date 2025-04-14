@@ -8,7 +8,7 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-#sample=["D-Glucose II","L-Glucose II","Empty I","D-Glucose III","D-Glucose I","L-Glucose I","L-Glucose III","Empty II"]
+sample=["D- II","L- II","Empty I","D- III","D- I","L- I","L- III","Empty II"]
 
 """
 fits gaussian + logistic to peaks in provided ranges
@@ -20,6 +20,22 @@ mybounds=[(1, 10, 10, 0, 1, 1), (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf)
 def gaussian(x,a,x0,s,b,c,d):
 	y= a*np.exp(-1.0*(x-x0)**2/(2*s**2))+ b + c/(1 + np.exp((x-x0)/d))
 	return y
+
+
+def areSame(pre1,text1,pre2,text2):
+        result=re.search(pre1,text1)
+#       text1=re.sub("^"+pre1,"",text1)
+        i=result.start()
+        text1=text1[i+5:-6]
+        result=re.search(pre2,text2)
+#       text2=re.sub("^"+pre2,"",text2)
+        i=result.start()
+        text2=text2[i+5:-6]
+        if re.match(text1,text2):
+                return True
+        else:
+                return False
+
 
 #															#
 # ++++++++++++++++++++	START MAIN +++++++++++++++++++++++#
@@ -51,6 +67,7 @@ ydata=[]
 
 filelist=[]
 temperature=[]
+sampleID=[]
 timeidx=[]
 a=[]
 da=[]
@@ -77,12 +94,34 @@ for u in range(len(pathlist)):
 		exit(-1)
 	try:
 		myfiles = glob.glob(pathname+"GSPEC*.csv")
+		samplefiles=glob.glob(pathname+"W_IDX*.csv")
 	except Exception as e:
 		print("path {} raises exception {}".format(pathname,e))
 		os._exit(-1)
 
 	myfiles.sort()
+	samplefiles.sort()
+	same=True
 	print("Pathname: {}\tLength myfiles {}".format(pathname,len(myfiles)))
+	if len(myfiles)==len(samplefiles):
+		for k in range(len(myfiles)):
+			same=same and areSame("GSPEC",myfiles[k],"W_IDX",samplefiles[k])
+			if not same:
+				print("file lists do not match")
+				exit(0)
+			with open(samplefiles[k], mode='r') as f:
+				line=f.readline()
+				line=f.readline()
+				x=int((int(line.split(",")[0])-1)/2)
+				if (x<0) or (x>8):
+					print("unexpected index")
+					exit(0)
+				sampleID.append(sample[x])
+#			print("{},{},{},{}".format(myfiles[k],samplefiles[k],same,sample[x]))
+	else:
+		print("number of spectra files do not equal number of sample files")
+		exit(0)
+
 
 	for k in range(len(myfiles)):
 		in_filename=myfiles[k]
@@ -178,10 +217,11 @@ print("Output to: "+newfilename)
 
 with open(newfilename,mode='w') as f:
 	f.write("Fit to  y= a*EXP(-1.0*(x-x0)^2/(2*s^2))+ b + c/(1 + EXP((x-x0)/d))\n")
-	f.write("inFile,hour,T,a,(a),x0,(x0),s,(s),b,(b),c,(c),d,(d)\n")
+	f.write("inFile,hour,Sample,T,a,(a),x0,(x0),s,(s),b,(b),c,(c),d,(d)\n")
 	for i in range(len(filelist)):
-		f.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(filelist[i]\
+		f.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(filelist[i]\
 			,timeidx[i]\
+			,sampleID[i]\
 			,temperature[i]\
 			,a[i],da[i]\
 			,x0[i],dx0[i]\
@@ -189,6 +229,11 @@ with open(newfilename,mode='w') as f:
 			,b[i],db[i]\
 			,c[i],dc[i]\
 			,d[i],dd[i]))
+summ=0.0
+for i in range(len(x0)):
+	summ+=x0[i]
+
+print("Average x0 {}".format(summ/float(len(x0))))
 
 #
 fig=plt.figure()
